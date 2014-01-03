@@ -29,7 +29,8 @@ Installation & Setup
 First, realize that Resellerclub requires you to whitelist your ip address
 (they implement this whitelist on a firewall level). This is probably no good
 if you want to use this tool on your workstation, so I encourage you setup
-a proxy.
+a proxy. You can find a ready-to-use docker image for such a proxy here:
+https://index.docker.io/u/elsdoerfer/resellerclub-api-proxy/
 
 You'll also need to determine your reseller id and your api key. The whole
 thing is explained here:

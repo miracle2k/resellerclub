@@ -7,10 +7,15 @@ from docopt import docopt
 import requests
 
 
-DEFAULT_URL = 'https://httpapi.com/'
+DEFAULT_URL = 'https://httpapi.com/api/'
 #DEAFULT_URL = 'https://test.httpapi.com/'
 
 MAX_RECORDS = 50  # 50 is the current max
+
+def append_slash(url):
+    if not url.endswith('/'):
+        return url + '/'
+    return url
 
 class ApiClient(object):
 
@@ -23,9 +28,10 @@ class ApiClient(object):
         }
 
     def request(self, http_method, api_method, params):
-        path = '/api/{}.json'.format(api_method)
-        return self.session.request(
-            http_method, urljoin(self.url, path), params=params).json()
+        path = '{}.json'.format(api_method)
+        response = self.session.request(
+            http_method, urljoin(append_slash(self.url), path), params=params)
+        return response.json()
 
     def dns_activate(self, order_id):
         return self.request('POST', 'dns/activate', {

@@ -12,8 +12,8 @@ setup(
     author=u'Michael Elsdörfer',
     author_email='michael@elsdoerfer.com',
     description=
-        '.gitignore local todo files, but sync them through Dropbox.',
-    py_modules=['localtodo'],
+        'ResellerClub API CLI client',
+    py_modules=['resellerclub'],
     install_requires=['docopt>=0.6.1', 'requests>=2.0.0'],
     classifiers=[
         'Development Status :: 3 - Alpha',

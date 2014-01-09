@@ -86,7 +86,7 @@ def main(argv):
            {prog} dns <domain> list <record-type> <name>
 
     Currently supported record types:
-        A, AAAA
+        A, AAAA, CNAME
 
     Commands:
         add          will add an ip for the given name
@@ -110,6 +110,7 @@ def main(argv):
         part_for_record = {
             'A': 'ipv4',
             'AAAA': 'ipv6',
+            'CNAME': 'cname',
         }[args['<record-type>']]
     except KeyError:
         print('Not a supported record type: {}'.format(args['<record-type>']))

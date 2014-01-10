@@ -7,7 +7,7 @@ from setuptools import setup
 setup(
     name='resellerclub',
     url='https://github.com/miracle2k/resellerclub-python',
-    version='0.1.2',
+    version='0.1.3',
     license='BSD',
     author=u'Michael Elsdörfer',
     author_email='michael@elsdoerfer.com',

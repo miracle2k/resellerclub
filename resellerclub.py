@@ -33,7 +33,14 @@ class ApiClient(object):
             http_method, urljoin(append_slash(self.url), path), params=params)
         return response.json()
 
-    def dns_activate(self, order_id):
+    def domains_get_details(self, name):
+        return self.request('GET', 'domains/details-by-name', {
+            'domain-name': name,
+            'options': 'All' 
+        })
+
+    def dns_activate(self, domain_name):
+        order_id = self.domains_get_details(domain_name)['entityid']
         return self.request('POST', 'dns/activate', {
             'order-id': order_id,
         })
@@ -84,6 +91,7 @@ def main(argv):
     usage: {prog} dns <domain> add <record-type> <name> <value> [--ttl int]
            {prog} dns <domain> delete <record-type> <name> <value>
            {prog} dns <domain> list <record-type> <name>
+           {prog} dns <domain> activate
 
     Currently supported record types:
         A, AAAA, CNAME
@@ -106,6 +114,24 @@ def main(argv):
         os.environ['RESELLERCLUB_API_KEY'],
         url=os.environ.get('RESELLERCLUB_URL'))
 
+    if args['activate']:
+        result = cmd_activate(client, args)
+    else:
+        result = cmd_domain(client, args)
+
+    if result is None:
+        return
+
+    print(json.dumps(result, sort_keys=True, indent=2))
+    if 'error' in result:
+        return 1
+
+
+def cmd_activate(client, args):
+    return client.dns_activate(args['<domain>'])
+
+
+def cmd_domain(client, args):
     try:
         part_for_record = {
             'A': 'ipv4',
@@ -125,11 +151,7 @@ def main(argv):
         result = getattr(client, method)(args['<domain>'], args['<value>'], host=args['<name>'])
     elif args['list']:
         result = client.dns_search(args['<domain>'], args['<record-type>'], host=args['<name>'], no_of_records=MAX_RECORDS)
-
-    print(json.dumps(result, sort_keys=True, indent=2))
-    if 'error' in result:
-        return 1
-
+    return result
 
 def run():
     sys.exit(main(sys.argv) or 0)

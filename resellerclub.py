@@ -1,7 +1,12 @@
 import sys, os
 import textwrap
-from urllib.parse import urljoin
+try:
+    from urllib.parse import urljoin
+except ImportError:
+    # Python 2.7
+    from urlparse import urljoin
 import json
+from collections import namedtuple
 from functools import wraps
 from docopt import docopt
 import requests
@@ -12,6 +17,28 @@ DEFAULT_URL = 'https://httpapi.com/api/'
 
 MAX_RECORDS = 50  # 50 is the current max
 
+class Address(namedtuple('Address', 'line_1 line_2 line_3 city state country zipcode')):
+    def to_params(self):
+        return {
+            'address-line-1': self.line_1,
+            'self-line-2': self.line_2,
+            'self-line-3': self.line_3,
+            'city': self.city,
+            'state': self.state,
+            'country': self.country,
+            'zipcode': self.zipcode
+        }
+
+class ResellerError(RuntimeError):
+    pass
+
+def check_error(res):
+    if isinstance(res, dict):
+        status = res.get('status')
+        if status and status == 'ERROR':
+            raise ResellerError(res['message'])
+    return res
+
 def append_slash(url):
     if not url.endswith('/'):
         return url + '/'
@@ -19,9 +46,10 @@ def append_slash(url):
 
 class ApiClient(object):
 
-    def __init__(self, user_id, api_key, url=None):
+    def __init__(self, user_id, api_key, url=None, proxies=None):
         self.url = url or DEFAULT_URL
-        self.session = requests.Session()
+        self.session = requests.session()
+        self.proxies = proxies
         self.session.params = {
             'auth-userid': user_id,
             'api-key': api_key
@@ -30,14 +58,113 @@ class ApiClient(object):
     def request(self, http_method, api_method, params):
         path = '{}.json'.format(api_method)
         response = self.session.request(
-            http_method, urljoin(append_slash(self.url), path), params=params)
+            http_method, urljoin(append_slash(self.url), path), params=params, proxies=self.proxies)
         return response.json()
 
     def domains_get_details(self, name):
         return self.request('GET', 'domains/details-by-name', {
             'domain-name': name,
-            'options': 'All' 
+            'options': 'All'
         })
+
+    def domains_register(self, domain, years, ns, customer, reg_contact,
+        admin_contact, tech_contact, billing_contact, invoice_option, purchase_privacy,
+        protect_privacy):
+        """
+        :param str domain: domain name to register
+        :param int years: number of years to register for
+        :param list[str] ns: list of nameservers
+        :param int customer: customer to register on behalf of
+        :param int reg_contact:
+        :param int admin_contact:
+        :param int tech_contact:
+        :param int billing_contact:
+        :param str invoice_option: one of NoInvoice, PayInvoice, or KeepInvoice
+        :param bool purchase_privacy: optional
+        :param bool protect_privacy: optional
+        """
+        return check_error(self.request('POST', 'domains/register', {
+            'domain-name': domain,
+            'years': years,
+            'ns': ns,
+            'customer-id': customer,
+            'reg-contact-id': reg_contact,
+            'admin-contact-id': admin_contact,
+            'tech-contact-id': tech_contact,
+            'billing-contact-id': billing_contact,
+            'invoice-option': invoice_option,
+            'purchase-privacy': purchase_privacy,
+            'protect-privacy': protect_privacy
+        }))
+
+    def domains_default_ns(self, customer_id):
+        """Return default name servers for a customer
+
+        :param customer_id:
+        """
+        return check_error(self.request('GET', 'domains/customer-default-ns', {
+            'customer-id': customer_id
+        }))
+
+    def contacts_add(self, type, name, company, email, address, phone_cc, phone, customer_id):
+        """
+        :param type:
+        :param name: name of the contact
+        :param company: name of company
+        :param email:
+        :param address:
+        :param phone_cc:
+        :param phone:
+        :param customer_id:
+        """
+        params = {
+            'type': type,
+            'name': name,
+            'company': company,
+            'email': email,
+            'phone-cc': phone_cc,
+            'phone': phone,
+            'customer-id': customer_id
+        }
+        params.update(address.to_params())
+        return check_error(self.request('POST', 'contacts/add', params))
+
+    def customers_add(self, username, password, name, company, address, phone_cc,
+        phone, lang_pref):
+        """
+        :param username: email address
+        :param password:
+        :param name:
+        :param company:
+        :param address:
+        :param phone_cc:
+        :param phone:
+        :param lang_pref:
+        """
+        params = {
+            'username': username,
+            'passwd': password,
+            'name': name,
+            'company': company,
+            'phone-cc': phone_cc,
+            'phone': phone,
+            'lang-pref': lang_pref
+        }
+        params.update(address.to_params())
+        return check_error(self.request('POST', 'customers/signup', params))
+
+
+    def domains_check_availability(self, domain, tlds, suggest_alternative=False):
+        """
+        :param domain: domain to check availability for
+        :param tlds: tlds of the domains to check
+        :param suggest_alternative: True to return a list of alternative domain names
+        """
+        return check_error(self.request('GET', 'domains/available', {
+            'domain-name': domain,
+            'tlds': tlds,
+            'suggest-alternative': suggest_alternative
+        }))
 
     def dns_activate(self, domain_name):
         order_id = self.domains_get_details(domain_name)['entityid']

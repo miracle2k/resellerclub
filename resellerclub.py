@@ -134,6 +134,12 @@ class ApiClient(object):
         params.update(address.to_params())
         return check_error(self.request('POST', 'contacts/add', params))
 
+    def contacts_default(self, customer_id, type='Contact'):
+        return self.request('GET', 'contacts/default', {
+            'customer-id': customer_id,
+            'type': type
+        })
+
     def customers_add(self, username, password, name, company, address, phone_cc,
         phone, lang_pref):
         """

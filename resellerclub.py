@@ -35,8 +35,13 @@ class ResellerError(RuntimeError):
 def check_error(res):
     if isinstance(res, dict):
         status = res.get('status')
-        if status and status == 'ERROR':
-            raise ResellerError(res['message'])
+        if status and status.lower() == 'error':
+            if 'message' in res:
+                raise ResellerError(res['message'])
+            elif 'error' in res:
+                raise ResellerError(res['error'])
+            else:
+                raise ResellerError(res)
     return res
 
 def append_slash(url):
